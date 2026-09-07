@@ -18,6 +18,7 @@ from reddit_ads_mcp.client import BASE_URL
 
 AUTHORIZE_URL = "https://www.reddit.com/api/v1/authorize"
 TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
+DEFAULT_SCOPE = "adsread"
 
 
 class OnboardingError(RuntimeError):
@@ -54,14 +55,22 @@ def extract_code(raw: str) -> str:
   )
 
 
-def build_authorize_url(*, client_id: str, redirect_uri: str) -> str:
+def normalize_scope(raw: str) -> str:
+  """Turn user-typed scopes (comma or space separated, extra whitespace) into
+  Reddit's expected space-separated scope string. Blank input defaults to
+  `adsread` (read-only reporting)."""
+  scopes = raw.replace(",", " ").split()
+  return " ".join(scopes) if scopes else DEFAULT_SCOPE
+
+
+def build_authorize_url(*, client_id: str, redirect_uri: str, scope: str = DEFAULT_SCOPE) -> str:
   params = {
     "client_id": client_id,
     "response_type": "code",
     "state": "mcp",
     "redirect_uri": redirect_uri,
     "duration": "permanent",
-    "scope": "adsread",
+    "scope": scope,
   }
   return f"{AUTHORIZE_URL}?{urlencode(params)}"
 
@@ -152,10 +161,13 @@ async def _run(*, project_path: str) -> None:
   client_id = input("Reddit Ads app ID: ").strip()
   client_secret = input("Reddit Ads app secret: ").strip()
   redirect_uri = input("Redirect URI (the HTTPS URL configured on the app): ").strip()
+  scope = normalize_scope(
+    input(f"OAuth scopes, space or comma separated [{DEFAULT_SCOPE}]: ").strip()
+  )
 
   print(
     f"\nOpen this URL, click Allow, then paste the code (or the whole redirected URL) back here:\n"
-    f"{build_authorize_url(client_id=client_id, redirect_uri=redirect_uri)}\n"
+    f"{build_authorize_url(client_id=client_id, redirect_uri=redirect_uri, scope=scope)}\n"
   )
   code = extract_code(input("Authorization code (or redirect URL): "))
 

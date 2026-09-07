@@ -62,6 +62,9 @@ uv run reddit-ads-mcp-init
 
 This walks you through the rest in one guided command:
 
+- asks for the OAuth scope(s) to request (space or comma separated), defaulting to `adsread`
+  (read-only reporting) if you just press enter — pass e.g. `adsread, adsedit` if you also need
+  write access
 - prints the authorize URL to open in your browser — after you click **Allow**, Reddit redirects
   your browser to a URL like `https://your-redirect-uri/?state=mcp&code=830775384-AbCdEf...`
   (Reddit often tacks a stray `#_` onto the end — that's not part of the code, ignore it); paste
