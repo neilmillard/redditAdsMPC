@@ -4,7 +4,7 @@ A Python MCP (Model Context Protocol) server for the Reddit Ads API. Provides
 read-only tools for listing accounts, campaigns, ad groups, ads, and pulling
 performance reports.
 
-Built with Python 3.11+, [httpx](https://www.python-httpx.org/), and the
+Built with Python 3.13+, [httpx](https://www.python-httpx.org/), and the
 official [`mcp`](https://pypi.org/project/mcp/) Python SDK. Ported from the
 C# reference implementation at
 [mkerchenski/RedditAdsMcp](https://github.com/mkerchenski/RedditAdsMcp).
@@ -26,7 +26,7 @@ account from `REDDIT_ACCOUNT_ID` is used.
 ## Prerequisites
 
 1. A Reddit account with an active [Reddit Ads](https://ads.reddit.com) advertiser account
-2. Python 3.11+ and [uv](https://docs.astral.sh/uv/)
+2. Python 3.13+ and [uv](https://docs.astral.sh/uv/)
 
 ## Setup
 
