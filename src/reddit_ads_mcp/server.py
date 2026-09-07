@@ -4,7 +4,7 @@ import logging
 import sys
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from reddit_ads_mcp import tools
 from reddit_ads_mcp.auth import USER_AGENT, RedditAuthService
@@ -12,7 +12,7 @@ from reddit_ads_mcp.client import RedditAdsClient
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
-mcp = FastMCP("reddit-ads")
+mcp = MCPServer("reddit-ads")
 
 
 def build_client() -> RedditAdsClient:
