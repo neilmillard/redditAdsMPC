@@ -17,6 +17,37 @@ def test_build_authorize_url_includes_client_id_and_redirect_uri():
   assert "scope=adsread" in url
 
 
+def test_extract_code_accepts_a_bare_code():
+  assert onboarding.extract_code("830775384-AbCdEfGhIjKlMnOpQrStUv") == (
+    "830775384-AbCdEfGhIjKlMnOpQrStUv"
+  )
+
+
+def test_extract_code_accepts_the_full_redirect_url():
+  raw = "https://example.com/callback?state=mcp&code=830775384-AbCdEfGhIjKlMnOpQrStUv"
+  assert onboarding.extract_code(raw) == "830775384-AbCdEfGhIjKlMnOpQrStUv"
+
+
+def test_extract_code_accepts_a_bare_query_string():
+  raw = "state=mcp&code=830775384-AbCdEfGhIjKlMnOpQrStUv"
+  assert onboarding.extract_code(raw) == "830775384-AbCdEfGhIjKlMnOpQrStUv"
+
+
+def test_extract_code_strips_surrounding_whitespace():
+  assert onboarding.extract_code("  abc-123  \n") == "abc-123"
+
+
+def test_extract_code_raises_on_denied_authorization():
+  raw = "https://example.com/callback?state=mcp&error=access_denied"
+  with pytest.raises(onboarding.OnboardingError, match="access_denied"):
+    onboarding.extract_code(raw)
+
+
+def test_extract_code_raises_when_no_code_present():
+  with pytest.raises(onboarding.OnboardingError, match="no `code`"):
+    onboarding.extract_code("https://example.com/callback?state=mcp")
+
+
 @respx.mock
 async def test_exchange_code_for_token_posts_authorization_code_grant():
   route = respx.post(TOKEN_URL).mock(

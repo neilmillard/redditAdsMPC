@@ -9,7 +9,7 @@ import asyncio
 import json
 import os
 import sys
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 
@@ -22,6 +22,32 @@ TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
 
 class OnboardingError(RuntimeError):
   """Raised when a setup step fails (bad credentials, expired code, etc.)."""
+
+
+def extract_code(raw: str) -> str:
+  """Pull the `code` out of whatever the user pastes back.
+
+  Reddit's authorize redirect looks like
+  ``https://your-redirect-uri/?state=mcp&code=830775384-AbCdEf...`` (or
+  ``...&error=access_denied`` if they hit Cancel). Accept the bare code, the
+  full redirect URL, or just its query string, so people don't have to know
+  which part to copy.
+  """
+  raw = raw.strip()
+  if "=" not in raw:
+    return raw
+
+  query = urlparse(raw).query if "://" in raw else raw
+  params = parse_qs(query)
+
+  if "error" in params:
+    raise OnboardingError(f"Reddit denied authorization: {params['error'][0]}")
+  if "code" in params:
+    return params["code"][0]
+
+  raise OnboardingError(
+    "no `code` parameter found — paste the code Reddit gave you, or the full redirect URL"
+  )
 
 
 def build_authorize_url(*, client_id: str, redirect_uri: str) -> str:
@@ -124,10 +150,10 @@ async def _run(*, project_path: str) -> None:
   redirect_uri = input("Redirect URI (the HTTPS URL configured on the app): ").strip()
 
   print(
-    f"\nOpen this URL, click Allow, then copy the `code` from the redirect:\n"
+    f"\nOpen this URL, click Allow, then paste the code (or the whole redirected URL) back here:\n"
     f"{build_authorize_url(client_id=client_id, redirect_uri=redirect_uri)}\n"
   )
-  code = input("Authorization code: ").strip()
+  code = extract_code(input("Authorization code (or redirect URL): "))
 
   async with httpx.AsyncClient() as http_client:
     print("\nExchanging code for a refresh token...")

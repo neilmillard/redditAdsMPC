@@ -62,7 +62,10 @@ uv run reddit-ads-mcp-init
 
 This walks you through the rest in one guided command:
 
-- prints the authorize URL to open in your browser (you paste back the `code` Reddit redirects you with)
+- prints the authorize URL to open in your browser — after you click **Allow**, Reddit redirects
+  your browser to a URL like `https://your-redirect-uri/?state=mcp&code=830775384-AbCdEf...`;
+  paste that whole URL back (or just the `code=` value if you'd rather copy less) — the helper
+  parses either
 - exchanges that code for a permanent refresh token
 - discovers your ad account(s) automatically, prompting you to pick if you have more than one
 - prints a ready-to-paste `.env` block and an MCP client config snippet with every value filled in
