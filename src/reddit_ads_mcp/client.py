@@ -31,6 +31,10 @@ class RedditAdsClient:
     response = await self._request("POST", path, json=body)
     return response.json()
 
+  async def patch(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    response = await self._request("PATCH", path, json=body)
+    return response.json()
+
   async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
     token = await self._auth.get_access_token()
     headers = {

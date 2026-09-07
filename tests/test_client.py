@@ -52,6 +52,22 @@ async def test_post_sends_json_body():
 
 
 @respx.mock
+async def test_patch_sends_json_body():
+  route = respx.patch(
+    "https://ads-api.reddit.com/api/v3/ad_accounts/a2_default/campaigns/camp_1"
+  ).mock(return_value=httpx.Response(200, json={"data": {"id": "camp_1"}}))
+
+  async with httpx.AsyncClient() as http_client:
+    client = RedditAdsClient(auth=make_auth(), http_client=http_client)
+    result = await client.patch(
+      "ad_accounts/a2_default/campaigns/camp_1", {"data": {"name": "new name"}}
+    )
+
+  assert result == {"data": {"id": "camp_1"}}
+  assert route.calls.last.request.headers["content-type"] == "application/json"
+
+
+@respx.mock
 async def test_error_response_raises_reddit_api_error():
   respx.get("https://ads-api.reddit.com/api/v3/ad_accounts/bad/campaigns").mock(
     return_value=httpx.Response(403, text="forbidden")

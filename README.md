@@ -1,15 +1,18 @@
 # reddit-ads-mcp
 
 A Python MCP (Model Context Protocol) server for the Reddit Ads API. Provides
-read-only tools for listing accounts, campaigns, ad groups, ads, and pulling
-performance reports.
+read-only reporting tools plus write tools for campaign/ad group/ad
+management, with guardrails against accidentally spending money.
 
 Built with Python 3.13+, [httpx](https://www.python-httpx.org/), and the
 official [`mcp`](https://pypi.org/project/mcp/) Python SDK. Ported from the
 C# reference implementation at
-[mkerchenski/RedditAdsMcp](https://github.com/mkerchenski/RedditAdsMcp).
+[mkerchenski/RedditAdsMcp](https://github.com/mkerchenski/RedditAdsMcp)
+(read-only tools only — the write tools below have no reference to port from).
 
 ## Available tools
+
+### Reporting (read-only)
 
 | Tool | Description |
 |------|-------------|
@@ -22,6 +25,33 @@ C# reference implementation at
 
 All tools accept an optional `account_id` parameter. If omitted, the default
 account from `REDDIT_ACCOUNT_ID` is used.
+
+### Campaign management (write)
+
+| Tool | Description |
+|------|-------------|
+| `create_campaign` | Create a campaign (name, objective, funding_instrument_id) |
+| `update_campaign` | Update a campaign's name and/or status |
+| `create_ad_group` | Create an ad group under a campaign, with an optional daily/lifetime budget |
+| `update_ad_group` | Update an ad group's name, budget, and/or status |
+| `create_ad` | Create an ad within an ad group (name, creative_id) |
+| `update_ad` | Update an ad's name and/or status |
+
+These write tools require an OAuth token authorized with the `adsedit` scope
+(see [Setup](#setup) below) — a token with only `adsread` will fail.
+
+**Spend guardrail.** Every create/update tool defaults new campaigns, ad
+groups, and ads to `configured_status="PAUSED"`, and budget-only updates
+never require confirmation. Setting `configured_status` to a live value
+(`ACTIVE`, `ENABLED`, `RUNNING`) — on create or update — raises a
+`GuardrailError` unless you also pass `confirm=True`. This means creating or
+editing something paused (including setting its budget) "just works", but
+making something eligible to spend money is always an explicit, separate
+step.
+
+Every write tool also accepts `dry_run=True`, which returns the HTTP
+method/path/body that would be sent instead of calling the API — use it to
+preview a change before committing to it.
 
 ## Prerequisites
 
@@ -93,7 +123,7 @@ Paste the printed MCP config block into your MCP client config (e.g. `.mcp.json`
 }
 ```
 
-Verify with your client's MCP inspector — the `reddit-ads` server should appear with 6 tools.
+Verify with your client's MCP inspector — the `reddit-ads` server should appear with 12 tools.
 
 <details>
 <summary>Doing it manually (if you'd rather not run the helper)</summary>
