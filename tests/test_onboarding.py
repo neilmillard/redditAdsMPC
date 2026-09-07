@@ -33,6 +33,17 @@ def test_extract_code_accepts_a_bare_query_string():
   assert onboarding.extract_code(raw) == "830775384-AbCdEfGhIjKlMnOpQrStUv"
 
 
+def test_extract_code_strips_trailing_hash_underscore_fragment_from_bare_code():
+  assert onboarding.extract_code("830775384-AbCdEfGhIjKlMnOpQrStUv#_") == (
+    "830775384-AbCdEfGhIjKlMnOpQrStUv"
+  )
+
+
+def test_extract_code_strips_trailing_hash_underscore_fragment_from_url():
+  raw = "https://example.com/callback?state=mcp&code=830775384-AbCdEfGhIjKlMnOpQrStUv#_"
+  assert onboarding.extract_code(raw) == "830775384-AbCdEfGhIjKlMnOpQrStUv"
+
+
 def test_extract_code_strips_surrounding_whitespace():
   assert onboarding.extract_code("  abc-123  \n") == "abc-123"
 

@@ -32,8 +32,12 @@ def extract_code(raw: str) -> str:
   ``...&error=access_denied`` if they hit Cancel). Accept the bare code, the
   full redirect URL, or just its query string, so people don't have to know
   which part to copy.
+
+  Reddit also has a long-standing quirk of tacking a stray ``#_`` fragment
+  onto the redirect URL; that's not part of the code, so it's stripped
+  before anything else.
   """
-  raw = raw.strip()
+  raw = raw.strip().split("#", 1)[0].strip()
   if "=" not in raw:
     return raw
 
