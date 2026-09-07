@@ -30,7 +30,15 @@ account from `REDDIT_ACCOUNT_ID` is used.
 
 ## Setup
 
-### 1. Create a Reddit Ads API app
+### 1. Install
+
+```bash
+git clone git@github.com:neilmillard/redditAdsMPC.git
+cd redditAdsMPC
+uv sync
+```
+
+### 2. Create a Reddit Ads API app
 
 1. Go to [ads.reddit.com](https://ads.reddit.com)
 2. In the left sidebar, click **Developer Applications** (under your account/business settings)
@@ -44,46 +52,25 @@ account from `REDDIT_ACCOUNT_ID` is used.
 | **Redirect URI** | any HTTPS URL you control (Reddit rejects `localhost`) |
 
 4. Click **Create app**
-5. Copy your **App ID** and **Secret** — you'll need both below
+5. Copy your **App ID** and **Secret** — the onboarding helper below asks for both
 
-### 2. Authorize the app
-
-Open this URL in your browser, replacing `YOUR_APP_ID` and `YOUR_REDIRECT_URI`:
-
-```
-https://www.reddit.com/api/v1/authorize?client_id=YOUR_APP_ID&response_type=code&state=mcp&redirect_uri=YOUR_REDIRECT_URI&duration=permanent&scope=adsread
-```
-
-Click **Allow**. Reddit redirects to your redirect URI with a `code` query parameter — copy it.
-
-### 3. Exchange the code for a refresh token
+### 3. Run the onboarding helper
 
 ```bash
-curl -X POST https://www.reddit.com/api/v1/access_token \
-  -u "YOUR_APP_ID:YOUR_SECRET" \
-  -A "reddit-ads-mcp-python/1.0" \
-  -d "grant_type=authorization_code&code=YOUR_AUTHORIZATION_CODE&redirect_uri=YOUR_REDIRECT_URI"
+uv run reddit-ads-mcp-init
 ```
 
-> `redirect_uri` must match exactly what you entered in Step 1.
+This walks you through the rest in one guided command:
 
-The response JSON contains a `refresh_token` field — it's permanent until revoked.
+- prints the authorize URL to open in your browser (you paste back the `code` Reddit redirects you with)
+- exchanges that code for a permanent refresh token
+- discovers your ad account(s) automatically, prompting you to pick if you have more than one
+- prints a ready-to-paste `.env` block and an MCP client config snippet with every value filled in
 
-### 4. Find your account ID
+No more hand-building the authorize URL, no `curl` for the token exchange, no digging through the
+Reddit Ads UI for your account ID.
 
-1. Go to [ads.reddit.com](https://ads.reddit.com) and click **All accounts** (top-left dropdown)
-2. Select your business — your ad account appears on the right
-3. The account ID is the value under the account name (e.g. `a2_eaf73mplhhps`)
-
-### 5. Install and configure
-
-```bash
-git clone git@github.com:neilmillard/redditAdsMPC.git
-cd redditAdsMPC
-uv sync
-```
-
-Add to your MCP client config (e.g. `.mcp.json`), replacing the four placeholder values:
+Paste the printed MCP config block into your MCP client config (e.g. `.mcp.json`):
 
 ```json
 "reddit-ads": {
@@ -101,6 +88,32 @@ Add to your MCP client config (e.g. `.mcp.json`), replacing the four placeholder
 
 Verify with your client's MCP inspector — the `reddit-ads` server should appear with 6 tools.
 
+<details>
+<summary>Doing it manually (if you'd rather not run the helper)</summary>
+
+Open this URL in your browser, replacing `YOUR_APP_ID` and `YOUR_REDIRECT_URI`:
+
+```
+https://www.reddit.com/api/v1/authorize?client_id=YOUR_APP_ID&response_type=code&state=mcp&redirect_uri=YOUR_REDIRECT_URI&duration=permanent&scope=adsread
+```
+
+Click **Allow** — Reddit redirects to your redirect URI with a `code` query parameter.
+
+```bash
+curl -X POST https://www.reddit.com/api/v1/access_token \
+  -u "YOUR_APP_ID:YOUR_SECRET" \
+  -A "reddit-ads-mcp-python/1.0" \
+  -d "grant_type=authorization_code&code=YOUR_AUTHORIZATION_CODE&redirect_uri=YOUR_REDIRECT_URI"
+```
+
+The response JSON contains a `refresh_token` field — it's permanent until revoked. `redirect_uri`
+must match exactly what you entered when creating the app.
+
+Find your account ID at [ads.reddit.com](https://ads.reddit.com) → **All accounts** (top-left
+dropdown) → select your business → the ID is under the account name (e.g. `a2_eaf73mplhhps`).
+
+</details>
+
 ## Development
 
 ```bash
@@ -109,6 +122,7 @@ uv run pytest           # run tests
 uv run ruff check .     # lint
 uv run ruff format .    # format
 uv run reddit-ads-mcp   # start the MCP server on stdio
+uv run reddit-ads-mcp-init  # guided onboarding (authorize, get refresh token, find account ID)
 ```
 
 ## License

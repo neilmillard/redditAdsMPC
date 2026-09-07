@@ -12,6 +12,7 @@ dependencies = [
 
 [project.scripts]
 reddit-ads-mcp = "reddit_ads_mcp.server:main"
+reddit-ads-mcp-init = "reddit_ads_mcp.onboarding:main"
 
 [build-system]
 requires = ["hatchling"]
