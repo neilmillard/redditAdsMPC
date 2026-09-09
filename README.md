@@ -128,8 +128,8 @@ Paste the printed MCP config block into your MCP client config (e.g. `.mcp.json`
 ```json
 "reddit-ads": {
   "type": "stdio",
-  "command": "uv",
-  "args": ["run", "--project", "/path/to/redditAdsMPC", "reddit-ads-mcp"],
+  "command": "python3",
+  "args": ["/path/to/redditAdsMPC/bin/reddit-ads-mcp"],
   "env": {
     "REDDIT_CLIENT_ID": "your_app_id",
     "REDDIT_CLIENT_SECRET": "your_secret",
@@ -138,6 +138,15 @@ Paste the printed MCP config block into your MCP client config (e.g. `.mcp.json`
   }
 }
 ```
+
+`bin/reddit-ads-mcp` needs only the Python standard library to start, so the
+`command`/`args` above work even in environments where `uv` isn't on PATH: it
+uses `uv run` when `uv` is available (fast, respects the lockfile) and
+otherwise falls back to `pip install --target` + `PYTHONPATH` to run the
+server directly. If you'd rather invoke `uv` yourself (e.g. for local
+development where you already run `uv sync`), `"command": "uv"` with
+`"args": ["run", "--project", "/path/to/redditAdsMPC", "reddit-ads-mcp"]`
+still works exactly as before.
 
 Verify with your client's MCP inspector — the `reddit-ads` server should appear with 12 tools.
 
@@ -221,8 +230,8 @@ alongside the `REDDIT_*` Ads variables (both auth flows are served by the one
 ```json
 "reddit-ads": {
   "type": "stdio",
-  "command": "uv",
-  "args": ["run", "--project", "/path/to/redditAdsMPC", "reddit-ads-mcp"],
+  "command": "python3",
+  "args": ["/path/to/redditAdsMPC/bin/reddit-ads-mcp"],
   "env": {
     "REDDIT_CLIENT_ID": "your_ads_app_id",
     "REDDIT_CLIENT_SECRET": "your_ads_app_secret",
@@ -248,6 +257,7 @@ uv run ruff format .    # format
 uv run reddit-ads-mcp   # start the MCP server on stdio
 uv run reddit-ads-mcp-init  # guided onboarding (authorize, get refresh token, find account ID)
 uv run reddit-content-mcp-init  # guided onboarding for the general content app
+python3 bin/reddit-ads-mcp  # start the server the same way an MCP client does (works without uv too)
 ```
 
 ## License

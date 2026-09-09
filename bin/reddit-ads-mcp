@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""MCP client entry point: use this instead of invoking `uv` directly.
+
+Point your MCP config's "command" at `python3` with this script as the sole
+arg (see README.md > Setup). It only needs the standard library to start, so
+it works even where `uv` isn't on PATH — it delegates to `uv` when available
+and otherwise falls back to plain `pip install --target` + `PYTHONPATH`.
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from reddit_ads_mcp.launcher import main
+
+if __name__ == "__main__":
+  main()
