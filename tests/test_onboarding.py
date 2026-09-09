@@ -17,6 +17,33 @@ def test_build_authorize_url_includes_client_id_and_redirect_uri():
   assert "scope=adsread" in url
 
 
+def test_build_authorize_url_defaults_scope_to_adsread():
+  url = onboarding.build_authorize_url(client_id="cid", redirect_uri="https://example.com/callback")
+
+  assert "scope=adsread" in url
+
+
+def test_build_authorize_url_accepts_a_custom_scope():
+  url = onboarding.build_authorize_url(
+    client_id="cid", redirect_uri="https://example.com/callback", scope="adsread adsedit"
+  )
+
+  assert "scope=adsread+adsedit" in url
+
+
+def test_normalize_scope_defaults_to_adsread_when_blank():
+  assert onboarding.normalize_scope("") == "adsread"
+  assert onboarding.normalize_scope("   ") == "adsread"
+
+
+def test_normalize_scope_joins_comma_separated_scopes():
+  assert onboarding.normalize_scope("adsread, adsedit") == "adsread adsedit"
+
+
+def test_normalize_scope_collapses_extra_whitespace():
+  assert onboarding.normalize_scope("  adsread   adsedit  ") == "adsread adsedit"
+
+
 def test_extract_code_accepts_a_bare_code():
   assert onboarding.extract_code("830775384-AbCdEfGhIjKlMnOpQrStUv") == (
     "830775384-AbCdEfGhIjKlMnOpQrStUv"
