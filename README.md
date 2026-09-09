@@ -170,9 +170,31 @@ dropdown) → select your business → the ID is under the account name (e.g. `a
 ## Setup for content tools
 
 The general browsing/search tools (`browse_subreddit`, `search_reddit`,
-`get_post_details`, `user_analysis`) need a **second, independent** Reddit
-app — a "script" or "installed" app type with `read`/`identity` scopes, not
-the Ads Developer Application used above.
+`get_post_details`, `user_analysis`) call `oauth.reddit.com`, which needs the
+`read` scope, plus `identity` and `history` for `user_analysis` (Reddit gates
+`/user/<name>/submitted` and `/user/<name>/comments` behind `history`). There
+are two ways to provide them.
+
+### Option A — one app for everything (simplest)
+
+Authorize your Ads app with the content scopes alongside the ads ones. Run
+`uv run reddit-ads-mcp-init` and, at the scope prompt, enter:
+
+```
+read, identity, history, adsread, adsedit
+```
+
+The resulting refresh token works for both APIs. Set only the `REDDIT_*`
+variables — when no `REDDIT_CONTENT_*` variables are present, the content
+client falls back to `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, and
+`REDDIT_REFRESH_TOKEN`, so nothing else changes. (Drop `adsedit` if you don't
+want the write tools enabled.)
+
+### Option B — a separate content app
+
+Use a **second, independent** Reddit app — a "script" or "installed" app type
+with `read`/`identity`/`history` scopes, not the Ads Developer Application
+used above. Its variables take precedence over the Ads ones when set.
 
 1. Go to [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) and create an app:
 
@@ -189,7 +211,7 @@ uv run reddit-content-mcp-init
 ```
 
 It walks through the same authorize-and-exchange flow as
-`reddit-ads-mcp-init` above, but requests `read identity` scope by default
+`reddit-ads-mcp-init` above, but requests `read identity history` scope by default
 and has no ad account to discover. It prints a `.env` block and MCP config
 snippet using `REDDIT_CONTENT_CLIENT_ID`, `REDDIT_CONTENT_CLIENT_SECRET`, and
 `REDDIT_CONTENT_REFRESH_TOKEN` — add those to the same server's `env` block

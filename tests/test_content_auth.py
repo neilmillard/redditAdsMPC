@@ -72,16 +72,69 @@ async def test_get_access_token_refreshes_once_expired():
   assert route.call_count == 2
 
 
-def test_from_env_requires_all_variables(monkeypatch):
-  monkeypatch.delenv("REDDIT_CONTENT_CLIENT_ID", raising=False)
-  monkeypatch.delenv("REDDIT_CONTENT_CLIENT_SECRET", raising=False)
-  monkeypatch.delenv("REDDIT_CONTENT_REFRESH_TOKEN", raising=False)
+CONTENT_ENV_VARS = (
+  "REDDIT_CONTENT_CLIENT_ID",
+  "REDDIT_CONTENT_CLIENT_SECRET",
+  "REDDIT_CONTENT_REFRESH_TOKEN",
+)
+
+ADS_ENV_VARS = (
+  "REDDIT_CLIENT_ID",
+  "REDDIT_CLIENT_SECRET",
+  "REDDIT_REFRESH_TOKEN",
+)
+
+
+def clear_env(monkeypatch):
+  for name in CONTENT_ENV_VARS + ADS_ENV_VARS:
+    monkeypatch.delenv(name, raising=False)
+
+
+def test_from_env_requires_content_or_ads_variables(monkeypatch):
+  clear_env(monkeypatch)
 
   with pytest.raises(RuntimeError, match="REDDIT_CONTENT_CLIENT_ID"):
     RedditContentAuthService.from_env(http_client=httpx.AsyncClient())
 
 
+def test_from_env_falls_back_to_ads_credentials(monkeypatch):
+  clear_env(monkeypatch)
+  monkeypatch.setenv("REDDIT_CLIENT_ID", "ads-cid")
+  monkeypatch.setenv("REDDIT_CLIENT_SECRET", "ads-secret")
+  monkeypatch.setenv("REDDIT_REFRESH_TOKEN", "ads-rtok")
+
+  service = RedditContentAuthService.from_env(http_client=httpx.AsyncClient())
+
+  assert service._client_id == "ads-cid"
+  assert service._client_secret == "ads-secret"
+  assert service._refresh_token == "ads-rtok"
+
+
+def test_from_env_prefers_content_credentials_over_ads(monkeypatch):
+  clear_env(monkeypatch)
+  monkeypatch.setenv("REDDIT_CLIENT_ID", "ads-cid")
+  monkeypatch.setenv("REDDIT_CLIENT_SECRET", "ads-secret")
+  monkeypatch.setenv("REDDIT_REFRESH_TOKEN", "ads-rtok")
+  monkeypatch.setenv("REDDIT_CONTENT_CLIENT_ID", "cid")
+  monkeypatch.setenv("REDDIT_CONTENT_CLIENT_SECRET", "secret")
+  monkeypatch.setenv("REDDIT_CONTENT_REFRESH_TOKEN", "rtok")
+
+  service = RedditContentAuthService.from_env(http_client=httpx.AsyncClient())
+
+  assert service._client_id == "cid"
+  assert service._refresh_token == "rtok"
+
+
+def test_from_env_rejects_partial_content_variables(monkeypatch):
+  clear_env(monkeypatch)
+  monkeypatch.setenv("REDDIT_CONTENT_CLIENT_ID", "cid")
+
+  with pytest.raises(RuntimeError, match="REDDIT_CONTENT_CLIENT_SECRET"):
+    RedditContentAuthService.from_env(http_client=httpx.AsyncClient())
+
+
 def test_from_env_builds_service(monkeypatch):
+  clear_env(monkeypatch)
   monkeypatch.setenv("REDDIT_CONTENT_CLIENT_ID", "cid")
   monkeypatch.setenv("REDDIT_CONTENT_CLIENT_SECRET", "secret")
   monkeypatch.setenv("REDDIT_CONTENT_REFRESH_TOKEN", "rtok")

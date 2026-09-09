@@ -28,8 +28,8 @@ def test_build_authorize_url_defaults_scope_to_read_identity():
 
 
 def test_normalize_scope_defaults_when_blank():
-  assert content_onboarding.normalize_scope("") == "read identity"
-  assert content_onboarding.normalize_scope("   ") == "read identity"
+  assert content_onboarding.normalize_scope("") == "read identity history"
+  assert content_onboarding.normalize_scope("   ") == "read identity history"
 
 
 def test_normalize_scope_joins_comma_separated_scopes():

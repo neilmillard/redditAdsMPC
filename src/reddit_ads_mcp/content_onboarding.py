@@ -14,7 +14,7 @@ import httpx
 from reddit_ads_mcp.onboarding import OnboardingError, exchange_code_for_token, extract_code
 
 AUTHORIZE_URL = "https://www.reddit.com/api/v1/authorize"
-DEFAULT_SCOPE = "read identity"
+DEFAULT_SCOPE = "read identity history"
 
 
 def normalize_scope(raw: str) -> str:
