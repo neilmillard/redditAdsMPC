@@ -6,9 +6,11 @@ import sys
 import httpx
 from mcp.server.mcpserver import MCPServer
 
-from reddit_ads_mcp import tools
+from reddit_ads_mcp import content_tools, tools
 from reddit_ads_mcp.auth import USER_AGENT, RedditAuthService
 from reddit_ads_mcp.client import RedditAdsClient
+from reddit_ads_mcp.content_auth import RedditContentAuthService
+from reddit_ads_mcp.content_client import RedditContentClient
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
@@ -30,6 +32,23 @@ def get_client() -> RedditAdsClient:
   if _client is None:
     _client = build_client()
   return _client
+
+
+def build_content_client() -> RedditContentClient:
+  http_client = httpx.AsyncClient()
+  http_client.headers["User-Agent"] = USER_AGENT
+  auth = RedditContentAuthService.from_env(http_client=http_client)
+  return RedditContentClient(auth=auth, http_client=http_client)
+
+
+_content_client: RedditContentClient | None = None
+
+
+def get_content_client() -> RedditContentClient:
+  global _content_client
+  if _content_client is None:
+    _content_client = build_content_client()
+  return _content_client
 
 
 @mcp.tool()
@@ -265,6 +284,93 @@ async def update_ad(
   return await tools.update_ad(
     get_client(), ad_id, account_id=account_id, confirm=confirm, dry_run=dry_run, **fields
   )
+
+
+@mcp.tool()
+async def browse_subreddit(
+  subreddit: str,
+  sort: str = "hot",
+  time: str | None = None,
+  limit: int = 25,
+) -> list[dict]:
+  """Browse posts in a subreddit (general Reddit content, read-only).
+
+  subreddit is the name without "r/" (e.g. "technology"), or "all"/"popular".
+  sort is one of hot, new, top, rising, controversial. time (hour/day/week/
+  month/year/all) only applies to top/controversial sorts.
+  """
+  return await content_tools.browse_subreddit(
+    get_content_client(), subreddit, sort=sort, time=time, limit=limit
+  )
+
+
+@mcp.tool()
+async def search_reddit(
+  query: str,
+  subreddits: list[str] | None = None,
+  sort: str = "relevance",
+  time: str = "all",
+  limit: int = 25,
+) -> list[dict]:
+  """Search posts across Reddit or within specific subreddits (max 10).
+
+  sort is one of relevance, hot, top, new, comments.
+  """
+  return await content_tools.search_reddit(
+    get_content_client(), query, subreddits=subreddits, sort=sort, time=time, limit=limit
+  )
+
+
+@mcp.tool()
+async def get_post_details(
+  post_id: str | None = None,
+  url: str | None = None,
+  subreddit: str | None = None,
+  comment_limit: int = 20,
+  comment_sort: str = "best",
+) -> dict:
+  """Fetch a Reddit post with its top-level comments.
+
+  Provide either post_id or url. Passing subreddit alongside post_id saves an
+  extra lookup. comment_sort is one of best, top, new, controversial, qa.
+  """
+  return await content_tools.get_post_details(
+    get_content_client(),
+    post_id=post_id,
+    url=url,
+    subreddit=subreddit,
+    comment_limit=comment_limit,
+    comment_sort=comment_sort,
+  )
+
+
+@mcp.tool()
+async def user_analysis(
+  username: str,
+  posts_limit: int = 10,
+  comments_limit: int = 10,
+  time_range: str = "month",
+  top_subreddits_limit: int = 10,
+) -> dict:
+  """Analyze a Reddit user's recent posting/commenting activity and karma.
+
+  username is without the "u/" prefix. time_range is one of day, week, month,
+  year, all.
+  """
+  return await content_tools.user_analysis(
+    get_content_client(),
+    username,
+    posts_limit=posts_limit,
+    comments_limit=comments_limit,
+    time_range=time_range,
+    top_subreddits_limit=top_subreddits_limit,
+  )
+
+
+@mcp.tool()
+def reddit_explain(term: str) -> dict:
+  """Explain a Reddit term, slang word, or cultural reference (e.g. "karma", "AMA")."""
+  return content_tools.reddit_explain(term)
 
 
 def main() -> None:

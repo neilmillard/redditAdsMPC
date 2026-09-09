@@ -53,6 +53,22 @@ Every write tool also accepts `dry_run=True`, which returns the HTTP
 method/path/body that would be sent instead of calling the API — use it to
 preview a change before committing to it.
 
+### General content browsing (read-only)
+
+| Tool | Description |
+|------|-------------|
+| `browse_subreddit` | Browse posts in a subreddit (hot/new/top/rising/controversial) |
+| `search_reddit` | Search posts across Reddit or within specific subreddits |
+| `get_post_details` | Fetch a post with its top-level comments |
+| `user_analysis` | Summarize a user's recent posts, comments, and karma |
+| `reddit_explain` | Explain a Reddit term, slang word, or cultural reference |
+
+These talk to the general Reddit API (`oauth.reddit.com`), not the Ads API —
+they need their own app registration and credentials (`REDDIT_CONTENT_*`, see
+[Setup for content tools](#setup-for-content-tools) below), separate from the
+`REDDIT_*` Ads credentials above. `reddit_explain` needs no credentials at
+all — it looks up a local glossary.
+
 ## Prerequisites
 
 1. A Reddit account with an active [Reddit Ads](https://ads.reddit.com) advertiser account
@@ -151,6 +167,55 @@ dropdown) → select your business → the ID is under the account name (e.g. `a
 
 </details>
 
+## Setup for content tools
+
+The general browsing/search tools (`browse_subreddit`, `search_reddit`,
+`get_post_details`, `user_analysis`) need a **second, independent** Reddit
+app — a "script" or "installed" app type with `read`/`identity` scopes, not
+the Ads Developer Application used above.
+
+1. Go to [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) and create an app:
+
+| Field | Value |
+|-------|-------|
+| **name** | `Reddit Content MCP` |
+| **type** | `script` |
+| **redirect uri** | any HTTPS URL you control |
+
+2. Run the onboarding helper:
+
+```bash
+uv run reddit-content-mcp-init
+```
+
+It walks through the same authorize-and-exchange flow as
+`reddit-ads-mcp-init` above, but requests `read identity` scope by default
+and has no ad account to discover. It prints a `.env` block and MCP config
+snippet using `REDDIT_CONTENT_CLIENT_ID`, `REDDIT_CONTENT_CLIENT_SECRET`, and
+`REDDIT_CONTENT_REFRESH_TOKEN` — add those to the same server's `env` block
+alongside the `REDDIT_*` Ads variables (both auth flows are served by the one
+`reddit-ads-mcp` process):
+
+```json
+"reddit-ads": {
+  "type": "stdio",
+  "command": "uv",
+  "args": ["run", "--project", "/path/to/redditAdsMPC", "reddit-ads-mcp"],
+  "env": {
+    "REDDIT_CLIENT_ID": "your_ads_app_id",
+    "REDDIT_CLIENT_SECRET": "your_ads_app_secret",
+    "REDDIT_REFRESH_TOKEN": "your_ads_refresh_token",
+    "REDDIT_ACCOUNT_ID": "your_account_id",
+    "REDDIT_CONTENT_CLIENT_ID": "your_content_app_id",
+    "REDDIT_CONTENT_CLIENT_SECRET": "your_content_app_secret",
+    "REDDIT_CONTENT_REFRESH_TOKEN": "your_content_refresh_token"
+  }
+}
+```
+
+The content tools only need `REDDIT_CONTENT_*`; the Ads tools only need
+`REDDIT_*` — set only the block(s) for the tools you actually use.
+
 ## Development
 
 ```bash
@@ -160,6 +225,7 @@ uv run ruff check .     # lint
 uv run ruff format .    # format
 uv run reddit-ads-mcp   # start the MCP server on stdio
 uv run reddit-ads-mcp-init  # guided onboarding (authorize, get refresh token, find account ID)
+uv run reddit-content-mcp-init  # guided onboarding for the general content app
 ```
 
 ## License
