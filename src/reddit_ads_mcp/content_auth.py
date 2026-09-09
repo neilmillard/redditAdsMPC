@@ -20,6 +20,15 @@ REQUIRED_ENV_VARS = (
   "REDDIT_CONTENT_REFRESH_TOKEN",
 )
 
+# Fallback: a single Reddit app authorized with both the content scopes
+# (`read`, `identity`) and the ads scopes serves both clients, so the
+# REDDIT_CONTENT_* variables can be omitted entirely.
+ADS_ENV_VARS = (
+  "REDDIT_CLIENT_ID",
+  "REDDIT_CLIENT_SECRET",
+  "REDDIT_REFRESH_TOKEN",
+)
+
 REFRESH_BUFFER = timedelta(seconds=60)
 
 
@@ -44,14 +53,25 @@ class RedditContentAuthService:
 
   @classmethod
   def from_env(cls, *, http_client: httpx.AsyncClient) -> "RedditContentAuthService":
-    missing = [name for name in REQUIRED_ENV_VARS if not os.environ.get(name)]
+    names = REQUIRED_ENV_VARS
+    if not any(os.environ.get(name) for name in REQUIRED_ENV_VARS):
+      if all(os.environ.get(name) for name in ADS_ENV_VARS):
+        names = ADS_ENV_VARS
+      else:
+        raise RuntimeError(
+          "Missing required environment variable(s): "
+          f"{', '.join(REQUIRED_ENV_VARS)} (or {', '.join(ADS_ENV_VARS)})"
+        )
+
+    missing = [name for name in names if not os.environ.get(name)]
     if missing:
       raise RuntimeError(f"Missing required environment variable(s): {', '.join(missing)}")
 
+    client_id, client_secret, refresh_token = names
     return cls(
-      client_id=os.environ["REDDIT_CONTENT_CLIENT_ID"],
-      client_secret=os.environ["REDDIT_CONTENT_CLIENT_SECRET"],
-      refresh_token=os.environ["REDDIT_CONTENT_REFRESH_TOKEN"],
+      client_id=os.environ[client_id],
+      client_secret=os.environ[client_secret],
+      refresh_token=os.environ[refresh_token],
       http_client=http_client,
     )
 
