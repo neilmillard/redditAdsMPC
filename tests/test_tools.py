@@ -12,6 +12,7 @@ def make_client(**overrides):
   )
   client.get.return_value = overrides.get("get_result", {"data": []})
   client.post.return_value = overrides.get("post_result", {"data": {"metrics": []}})
+  client.patch.return_value = overrides.get("patch_result", {"data": {}})
   return client
 
 
@@ -156,3 +157,229 @@ async def test_get_daily_performance_uses_days_window(monkeypatch, days):
   expected_start_low = (before - timedelta(days=days)).strftime("%Y-%m-%d")
   expected_start_high = (after - timedelta(days=days)).strftime("%Y-%m-%d")
   assert captured["start_date"] in {expected_start_low, expected_start_high}
+
+
+# -- write tools: guardrails ---------------------------------------------
+
+
+async def test_create_campaign_defaults_to_paused_and_posts():
+  client = make_client(post_result={"data": {"id": "camp_1"}})
+
+  result = await tools.create_campaign(
+    client,
+    name="Q4 launch",
+    objective="TRAFFIC",
+    funding_instrument_id="fi_1",
+  )
+
+  assert result == {"data": {"id": "camp_1"}}
+  client.post.assert_called_once_with(
+    "ad_accounts/a2_default/campaigns",
+    {
+      "data": {
+        "name": "Q4 launch",
+        "objective": "TRAFFIC",
+        "funding_instrument_id": "fi_1",
+        "configured_status": "PAUSED",
+      }
+    },
+  )
+
+
+async def test_create_campaign_active_without_confirm_raises():
+  client = make_client()
+
+  with pytest.raises(tools.GuardrailError, match="confirm=True"):
+    await tools.create_campaign(
+      client,
+      name="Q4 launch",
+      objective="TRAFFIC",
+      funding_instrument_id="fi_1",
+      configured_status="ACTIVE",
+    )
+
+  client.post.assert_not_called()
+
+
+async def test_create_campaign_active_with_confirm_posts():
+  client = make_client(post_result={"data": {"id": "camp_1"}})
+
+  result = await tools.create_campaign(
+    client,
+    name="Q4 launch",
+    objective="TRAFFIC",
+    funding_instrument_id="fi_1",
+    configured_status="ACTIVE",
+    confirm=True,
+  )
+
+  assert result == {"data": {"id": "camp_1"}}
+  client.post.assert_called_once()
+
+
+async def test_create_campaign_dry_run_skips_the_api_call():
+  client = make_client()
+
+  result = await tools.create_campaign(
+    client,
+    name="Q4 launch",
+    objective="TRAFFIC",
+    funding_instrument_id="fi_1",
+    dry_run=True,
+  )
+
+  assert result["dry_run"] is True
+  assert result["body"]["data"]["name"] == "Q4 launch"
+  client.post.assert_not_called()
+
+
+async def test_update_campaign_without_status_change_skips_guardrail():
+  client = make_client(patch_result={"data": {"id": "camp_1"}})
+
+  result = await tools.update_campaign(client, "camp_1", account_id="a2_x", name="renamed")
+
+  assert result == {"data": {"id": "camp_1"}}
+  client.patch.assert_called_once_with(
+    "ad_accounts/a2_x/campaigns/camp_1", {"data": {"name": "renamed"}}
+  )
+
+
+async def test_update_campaign_to_active_requires_confirm():
+  client = make_client()
+
+  with pytest.raises(tools.GuardrailError, match="confirm=True"):
+    await tools.update_campaign(client, "camp_1", configured_status="ACTIVE")
+
+  client.patch.assert_not_called()
+
+
+async def test_update_campaign_to_paused_does_not_require_confirm():
+  client = make_client(patch_result={"data": {"id": "camp_1"}})
+
+  await tools.update_campaign(client, "camp_1", configured_status="PAUSED")
+
+  client.patch.assert_called_once()
+
+
+async def test_create_ad_group_defaults_to_paused():
+  client = make_client(post_result={"data": {"id": "ag_1"}})
+
+  result = await tools.create_ad_group(
+    client,
+    campaign_id="camp_1",
+    name="Group A",
+    daily_budget=5000,
+  )
+
+  assert result == {"data": {"id": "ag_1"}}
+  client.post.assert_called_once_with(
+    "ad_accounts/a2_default/ad_groups",
+    {
+      "data": {
+        "campaign_id": "camp_1",
+        "name": "Group A",
+        "daily_budget": 5000,
+        "configured_status": "PAUSED",
+      }
+    },
+  )
+
+
+async def test_create_ad_group_active_without_confirm_raises():
+  client = make_client()
+
+  with pytest.raises(tools.GuardrailError, match="confirm=True"):
+    await tools.create_ad_group(
+      client,
+      campaign_id="camp_1",
+      name="Group A",
+      configured_status="ACTIVE",
+    )
+
+
+async def test_update_ad_group_active_requires_confirm():
+  client = make_client()
+
+  with pytest.raises(tools.GuardrailError, match="confirm=True"):
+    await tools.update_ad_group(client, "ag_1", configured_status="ACTIVE")
+
+  client.patch.assert_not_called()
+
+
+async def test_update_ad_group_budget_only_does_not_require_confirm():
+  client = make_client(patch_result={"data": {"id": "ag_1"}})
+
+  await tools.update_ad_group(client, "ag_1", account_id="a2_x", daily_budget=7500)
+
+  client.patch.assert_called_once_with(
+    "ad_accounts/a2_x/ad_groups/ag_1", {"data": {"daily_budget": 7500}}
+  )
+
+
+async def test_create_ad_defaults_to_paused():
+  client = make_client(post_result={"data": {"id": "ad_1"}})
+
+  result = await tools.create_ad(
+    client,
+    ad_group_id="ag_1",
+    name="Ad A",
+    creative_id="cr_1",
+  )
+
+  assert result == {"data": {"id": "ad_1"}}
+  client.post.assert_called_once_with(
+    "ad_accounts/a2_default/ads",
+    {
+      "data": {
+        "ad_group_id": "ag_1",
+        "name": "Ad A",
+        "creative_id": "cr_1",
+        "configured_status": "PAUSED",
+      }
+    },
+  )
+
+
+async def test_create_ad_active_without_confirm_raises():
+  client = make_client()
+
+  with pytest.raises(tools.GuardrailError, match="confirm=True"):
+    await tools.create_ad(
+      client,
+      ad_group_id="ag_1",
+      name="Ad A",
+      creative_id="cr_1",
+      configured_status="ACTIVE",
+    )
+
+
+async def test_update_ad_active_requires_confirm():
+  client = make_client()
+
+  with pytest.raises(tools.GuardrailError, match="confirm=True"):
+    await tools.update_ad(client, "ad_1", configured_status="ACTIVE")
+
+  client.patch.assert_not_called()
+
+
+async def test_update_ad_name_only_does_not_require_confirm():
+  client = make_client(patch_result={"data": {"id": "ad_1"}})
+
+  await tools.update_ad(client, "ad_1", account_id="a2_x", name="renamed")
+
+  client.patch.assert_called_once_with("ad_accounts/a2_x/ads/ad_1", {"data": {"name": "renamed"}})
+
+
+async def test_create_ad_dry_run_skips_the_api_call():
+  client = make_client()
+
+  result = await tools.create_ad(
+    client,
+    ad_group_id="ag_1",
+    name="Ad A",
+    creative_id="cr_1",
+    dry_run=True,
+  )
+
+  assert result["dry_run"] is True
+  client.post.assert_not_called()

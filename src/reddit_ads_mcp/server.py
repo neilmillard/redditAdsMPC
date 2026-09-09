@@ -1,4 +1,4 @@
-"""MCP server exposing read-only Reddit Ads API tools over stdio."""
+"""MCP server exposing Reddit Ads API reporting and campaign-management tools over stdio."""
 
 import logging
 import sys
@@ -99,6 +99,172 @@ async def get_daily_performance(account_id: str | None = None, days: int = 7) ->
   broken down by DATE and CAMPAIGN_ID.
   """
   return await tools.get_daily_performance(get_client(), account_id=account_id, days=days)
+
+
+@mcp.tool()
+async def create_campaign(
+  name: str,
+  objective: str,
+  funding_instrument_id: str,
+  account_id: str | None = None,
+  configured_status: str = "PAUSED",
+  confirm: bool = False,
+  dry_run: bool = False,
+) -> dict:
+  """Create a Reddit Ads campaign.
+
+  Defaults to configured_status="PAUSED" so the campaign is created inert.
+  Passing a live status (e.g. "ACTIVE") without confirm=True raises a
+  GuardrailError instead of calling the API — pass confirm=True once you've
+  reviewed the details. Set dry_run=True to preview the request body without
+  sending it.
+  """
+  return await tools.create_campaign(
+    get_client(),
+    name=name,
+    objective=objective,
+    funding_instrument_id=funding_instrument_id,
+    account_id=account_id,
+    configured_status=configured_status,
+    confirm=confirm,
+    dry_run=dry_run,
+  )
+
+
+@mcp.tool()
+async def update_campaign(
+  campaign_id: str,
+  account_id: str | None = None,
+  name: str | None = None,
+  configured_status: str | None = None,
+  confirm: bool = False,
+  dry_run: bool = False,
+) -> dict:
+  """Update a Reddit Ads campaign.
+
+  Changing configured_status to a live status (e.g. "ACTIVE") without
+  confirm=True raises a GuardrailError instead of calling the API.
+  """
+  fields = {
+    k: v for k, v in {"name": name, "configured_status": configured_status}.items() if v is not None
+  }
+  return await tools.update_campaign(
+    get_client(), campaign_id, account_id=account_id, confirm=confirm, dry_run=dry_run, **fields
+  )
+
+
+@mcp.tool()
+async def create_ad_group(
+  campaign_id: str,
+  name: str,
+  account_id: str | None = None,
+  daily_budget: int | None = None,
+  lifetime_budget: int | None = None,
+  configured_status: str = "PAUSED",
+  confirm: bool = False,
+  dry_run: bool = False,
+) -> dict:
+  """Create a Reddit Ads ad group under a campaign.
+
+  Budgets are in the account's currency micros. Defaults to
+  configured_status="PAUSED"; a live status without confirm=True raises a
+  GuardrailError.
+  """
+  extra = {
+    k: v
+    for k, v in {"daily_budget": daily_budget, "lifetime_budget": lifetime_budget}.items()
+    if v is not None
+  }
+  return await tools.create_ad_group(
+    get_client(),
+    campaign_id=campaign_id,
+    name=name,
+    account_id=account_id,
+    configured_status=configured_status,
+    confirm=confirm,
+    dry_run=dry_run,
+    **extra,
+  )
+
+
+@mcp.tool()
+async def update_ad_group(
+  ad_group_id: str,
+  account_id: str | None = None,
+  name: str | None = None,
+  daily_budget: int | None = None,
+  lifetime_budget: int | None = None,
+  configured_status: str | None = None,
+  confirm: bool = False,
+  dry_run: bool = False,
+) -> dict:
+  """Update a Reddit Ads ad group.
+
+  Changing configured_status to a live status (e.g. "ACTIVE") without
+  confirm=True raises a GuardrailError instead of calling the API.
+  """
+  fields = {
+    k: v
+    for k, v in {
+      "name": name,
+      "daily_budget": daily_budget,
+      "lifetime_budget": lifetime_budget,
+      "configured_status": configured_status,
+    }.items()
+    if v is not None
+  }
+  return await tools.update_ad_group(
+    get_client(), ad_group_id, account_id=account_id, confirm=confirm, dry_run=dry_run, **fields
+  )
+
+
+@mcp.tool()
+async def create_ad(
+  ad_group_id: str,
+  name: str,
+  creative_id: str,
+  account_id: str | None = None,
+  configured_status: str = "PAUSED",
+  confirm: bool = False,
+  dry_run: bool = False,
+) -> dict:
+  """Create a Reddit Ads ad within an ad group.
+
+  Defaults to configured_status="PAUSED"; a live status without confirm=True
+  raises a GuardrailError.
+  """
+  return await tools.create_ad(
+    get_client(),
+    ad_group_id=ad_group_id,
+    name=name,
+    creative_id=creative_id,
+    account_id=account_id,
+    configured_status=configured_status,
+    confirm=confirm,
+    dry_run=dry_run,
+  )
+
+
+@mcp.tool()
+async def update_ad(
+  ad_id: str,
+  account_id: str | None = None,
+  name: str | None = None,
+  configured_status: str | None = None,
+  confirm: bool = False,
+  dry_run: bool = False,
+) -> dict:
+  """Update a Reddit Ads ad.
+
+  Changing configured_status to a live status (e.g. "ACTIVE") without
+  confirm=True raises a GuardrailError instead of calling the API.
+  """
+  fields = {
+    k: v for k, v in {"name": name, "configured_status": configured_status}.items() if v is not None
+  }
+  return await tools.update_ad(
+    get_client(), ad_id, account_id=account_id, confirm=confirm, dry_run=dry_run, **fields
+  )
 
 
 def main() -> None:
